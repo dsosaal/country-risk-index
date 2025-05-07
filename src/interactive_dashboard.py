@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import folium
+from streamlit_folium import st_folium
+import geopandas as gpd
 
 # ===========================
 # Configuración del Dashboard
@@ -9,67 +10,61 @@ import seaborn as sns
 st.set_page_config(page_title="Country Risk Dashboard", layout="wide")
 
 st.title("Country Risk Index Dashboard")
-st.markdown("Visualiza la evolución del riesgo país por indicador y año.")
+st.markdown("Visualiza la evolución del índice de riesgo país en un mapa interactivo.")
 
 # ===========================
 # Cargar Datos
 # ===========================
 @st.cache
 def load_data():
-    try:
-        df = pd.read_csv("data/processed/historical_index.csv")
-        return df
-    except FileNotFoundError:
-        st.error("❌ No se encontró el archivo historical_index.csv. Verifica la ruta.")
-        return pd.DataFrame()
+    df = pd.read_csv("data/processed/historical_risk_index.csv")
+    return df
 
 df = load_data()
 
 # Verificar que haya datos
 if df.empty:
-    st.error("No hay datos disponibles en historical_index.csv.")
+    st.error("No hay datos disponibles.")
 else:
     # ===========================
     # Filtros Interactivos
     # ===========================
-    countries = df['country'].unique().tolist()
-    indicators = df['indicator'].unique().tolist()
     years = sorted(df['year'].unique())
+    selected_year = st.selectbox("Selecciona el Año", years, index=len(years) - 1)
 
-    selected_countries = st.multiselect("Selecciona Países", countries, default=countries)
-    selected_indicators = st.multiselect("Selecciona Indicadores", indicators, default=indicators)
-    selected_years = st.slider("Selecciona el Rango de Años", 
-                               min_value=min(years), 
-                               max_value=max(years), 
-                               value=(min(years), max(years)))
-
-    # Filtrar Datos
-    df_filtered = df[
-        (df['country'].isin(selected_countries)) &
-        (df['indicator'].isin(selected_indicators)) &
-        (df['year'].between(selected_years[0], selected_years[1]))
-    ]
+    # Filtrar los datos para el año seleccionado
+    df_filtered = df[df['year'] == selected_year]
 
     # ===========================
-    # Visualización
+    # Cargar el shapefile (mapa de países)
     # ===========================
-    st.subheader("Evolución del Índice de Riesgo País")
+    @st.cache
+    def load_geojson():
+        world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+        world = world[(world.continent == "North America") | (world.continent == "South America")]
+        world = world[world.name.isin(["Brazil", "Colombia", "Mexico", "Peru"])]
+        return world
+    
+    world = load_geojson()
+    world = world.merge(df_filtered, left_on="name", right_on="country", how="left")
 
-    if not df_filtered.empty:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        sns.lineplot(
-            data=df_filtered,
-            x="year",
-            y="value",
-            hue="country",
-            style="indicator",
-            markers=True,
-            ax=ax
-        )
-        plt.title("Evolución del Índice de Riesgo País por Año")
-        plt.xlabel("Año")
-        plt.ylabel("Valor del Indicador")
-        plt.grid(True, linestyle="--", alpha=0.6)
-        st.pyplot(fig)
-    else:
-        st.warning("No hay datos para la selección actual. Ajusta los filtros.")
+    # ===========================
+    # Crear el mapa interactivo
+    # ===========================
+    m = folium.Map(location=[15, -80], zoom_start=4, tiles="cartodb positron")
+
+    for _, row in world.iterrows():
+        color = "green" if pd.isna(row['risk_score']) else folium.colors.linear.YlOrRd_09.scale(0, 100)(row['risk_score'])
+        folium.GeoJson(
+            data=row['geometry'],
+            style_function=lambda x, color=color: {
+                'fillColor': color,
+                'color': 'black',
+                'weight': 1,
+                'fillOpacity': 0.6,
+            },
+            tooltip=folium.Tooltip(f"{row['country']}: {row['risk_score']:.2f}" if not pd.isna(row['risk_score']) else "Sin datos")
+        ).add_to(m)
+
+    st.subheader(f"Mapa Interactivo del Índice de Riesgo País - {selected_year}")
+    st_folium(m, width=800, height=500)
