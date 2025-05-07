@@ -5,12 +5,10 @@ import os
 # CONFIGURACIÓN
 # =========================
 
-INPUT_PATH = "data/processed/base_index.csv"
-OUTPUT_PATH = "data/processed/country_risk_score.csv"
+INPUT_PATH = "data/processed/historical_index.csv"
+OUTPUT_PATH = "data/processed/historical_risk_index.csv"
 
 # Dirección del riesgo por indicador
-# True: a mayor valor, mayor riesgo
-# False: a mayor valor, menor riesgo
 RISK_DIRECTION = {
     'inflation': True,
     'external_debt': True,
@@ -27,42 +25,44 @@ def load_data(path):
     df = pd.read_csv(path)
     return df
 
-def normalize_indicators(df_base, risk_direction):
-    df_wide = df_base.pivot(index='country', columns='indicator', values='value')
-    df_norm = pd.DataFrame(index=df_wide.index)
+def calculate_historical_index(df, risk_direction):
+    all_years = df['year'].unique()
+    results = []
 
-    for col in df_wide.columns:
-        col_min, col_max = df_wide[col].min(), df_wide[col].max()
-        if col_min == col_max:
-            df_norm[col] = 0  # evitar división por cero
-        elif risk_direction[col]:
-            df_norm[col] = (df_wide[col] - col_min) / (col_max - col_min)
-        else:
-            df_norm[col] = (col_max - df_wide[col]) / (col_max - col_min)
+    for year in all_years:
+        df_year = df[df['year'] == year].pivot(index='country', columns='indicator', values='value')
+        df_norm = pd.DataFrame(index=df_year.index)
 
-    return df_norm
+        for col in df_year.columns:
+            col_min, col_max = df_year[col].min(), df_year[col].max()
+            if risk_direction.get(col, True):
+                df_norm[col] = (df_year[col] - col_min) / (col_max - col_min)
+            else:
+                df_norm[col] = (col_max - df_year[col]) / (col_max - col_min)
+        
+        # Calcular score de riesgo compuesto
+        df_norm['risk_score'] = df_norm.mean(axis=1) * 100
+        df_norm['year'] = year  # Guardar el año correctamente
+        df_norm.reset_index(inplace=True)
 
-def apply_weights(df_norm):
-    n = df_norm.shape[1]
-    weights = {col: 1 / n for col in df_norm.columns}
-    df_norm['risk_score'] = sum(df_norm[col] * w for col, w in weights.items())
-    df_norm['risk_score'] *= 100  # escalar a 0–100
-    return df_norm.reset_index()
+        results.append(df_norm[['year', 'country', 'risk_score']])  # Guardar correctamente
+
+    df_historical = pd.concat(results, ignore_index=True)
+    return df_historical
 
 def save_result(df_final, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    df_final[['country', 'risk_score']].to_csv(output_path, index=False)
-    print(f"Índice guardado en {output_path}")
+    df_final.to_csv(output_path, index=False)
+    print(f"Índice histórico guardado en {output_path}")
 
 # =========================
 # EJECUCIÓN
 # =========================
 
 def main():
-    df_base = load_data(INPUT_PATH)
-    df_norm = normalize_indicators(df_base, RISK_DIRECTION)
-    df_final = apply_weights(df_norm)
-    save_result(df_final, OUTPUT_PATH)
+    df = load_data(INPUT_PATH)
+    df_historical = calculate_historical_index(df, RISK_DIRECTION)
+    save_result(df_historical, OUTPUT_PATH)
 
 if __name__ == "__main__":
     main()
