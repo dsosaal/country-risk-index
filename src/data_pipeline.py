@@ -54,7 +54,7 @@ def build_dataset():
     final_df = pd.concat(all_data, ignore_index=True)
     os.makedirs("data/processed", exist_ok=True)
     final_df.to_csv("data/processed/world_bank_indicators.csv", index=False)
-    print("✅ Datos guardados en data/processed/world_bank_indicators.csv")
+    print("Datos guardados en data/processed/world_bank_indicators.csv")
 
 if __name__ == "__main__":
     build_dataset()
