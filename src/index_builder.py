@@ -52,7 +52,7 @@ def apply_weights(df_norm):
 def save_result(df_final, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df_final[['country', 'risk_score']].to_csv(output_path, index=False)
-    print(f"✅ Índice guardado en {output_path}")
+    print(f"Índice guardado en {output_path}")
 
 # =========================
 # EJECUCIÓN
