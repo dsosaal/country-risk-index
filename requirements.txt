@@ -1,4 +1,8 @@
+streamlit
 pandas
-requests
-matplotlib
-seaborn
+plotly
+geopandas
+fpdf2
+kaleido
+xlsxwriter
+
