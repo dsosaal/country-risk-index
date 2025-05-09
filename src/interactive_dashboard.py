@@ -24,7 +24,7 @@ st.markdown("Visualiza la evolución del índice de riesgo país en un mapa inte
 # ===========================
 # Cargar Datos
 # ===========================
-@st.cache
+@st.cache_data
 def load_data():
     df = pd.read_csv("data/processed/historical_risk_index.csv")
     return df
