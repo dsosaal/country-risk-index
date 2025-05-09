@@ -5,4 +5,5 @@ geopandas
 fpdf2
 kaleido
 xlsxwriter
+matplotlib
 
