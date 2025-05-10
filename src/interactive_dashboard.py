@@ -10,16 +10,20 @@ import os
 import xlsxwriter
 
 
-
-
-
 # ===========================
 # Configuración del Dashboard
 # ===========================
 st.set_page_config(page_title="Country Risk Dashboard", layout="wide")
 
+
 st.title("Country Risk Index Dashboard")
-st.markdown("This interactive map displays the Country Risk Index, a measure that evaluates the economic risk level of each country based on factors such as inflation, GDP growth, current account balance, and external debt. Darker colors indicate higher risk, while lighter colors represent lower risk. Select a year to see how the risk has evolved across countries.")
+st.markdown("This interactive map displays the Country Risk Index, a measure that evaluates the economic risk level of each country based on factors such as inflation, GDP growth, current account balance, and external debt. Darker colors indicate higher risk, while lighter colors represent lower risk. Select a year to see how the risk has evolved across countries. In this initial version, data from Mexico, Peru, Colombia and Brazil is included. The data is sourced from the World Bank and the International Monetary Fund (IMF).")
+
+st.markdown("""
+<div style="font-size: 16px; color: gray; margin-top: -10px;">
+<b>Version 1 - Update: May 9, 2025.</b>
+</div>
+""", unsafe_allow_html=True)
 
 # ===========================
 # Cargar Datos
